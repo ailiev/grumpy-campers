@@ -15,7 +15,13 @@ import qualified Graphics.UI.Gtk.Abstract.Widget as Widget
 
 import Paths_cairo_appbase as My
 import Control.Monad.Trans (liftIO)
-import System.IO (stdout, hFlush)
+import IO (stdout, hFlush)
+
+-- positive y-axis upwards
+cCOORD_TRANSFORM = M.Matrix 1 0 0 (-1) 0 0
+
+cCANVAS_SIDE = 30
+
 
 windowWidth, windowHeight :: Int
 windowWidth   = 500
@@ -92,14 +98,29 @@ main = do
   -- set up the canvas
   canvas <- get G.castToDrawingArea "drawingarea1"
   G.onExpose canvas $ const (updateCanvas canvas)
-  G.widgetAddEvents canvas [Widget.ButtonPressMask]
+  -- seems to be enabled by default
+  -- G.widgetAddEvents canvas [Widget.ButtonPressMask]
   canvas `G.on` G.buttonPressEvent $ G.tryEvent $
-    do (x,y) <- G.eventCoordinates
+    do (x,y) <- G.eventCoordinates  -- this works on the Reader monad in EventM
+       (tranX, tranY) <- liftIO $ translateCoords canvas x y
        button <- G.eventButton
-       liftIO $ putStrLn $ show button ++ " button pressed at " ++ show x ++ "," ++ show y
+       liftIO $ -- need liftIO here as the top level Monad is EventM, not IO
+          putStrLn $ show button ++ " pressed at win " ++ show (x,y) ++
+          ", canvas " ++ show (tranX,tranY)
        liftIO $ hFlush stdout
+
   G.widgetShowAll window
   G.mainGUI
+
+translateCoords :: G.DrawingArea -> Double -> Double -> IO (Int,Int)
+translateCoords canvas winX winY =
+    do (winWidth, winHeight) <- G.widgetGetSize canvas
+       let  x_scaled = winX / (fromIntegral winWidth / cCANVAS_SIDE)
+            y_scaled = winY / (fromIntegral winHeight / cCANVAS_SIDE)
+            x_translated = x_scaled - (cCANVAS_SIDE/2)
+            y_translated = y_scaled - (cCANVAS_SIDE/2)
+            (x,y) = M.transformPoint cCOORD_TRANSFORM (x_translated, y_translated)
+       return $ (round x, round y)
 
 
 
@@ -133,8 +154,8 @@ myDelete = putStrLn "Delete"
 
 updateCanvas :: G.DrawingArea -> IO Bool
 updateCanvas canvas = do
-  win <- G.drawingAreaGetDrawWindow canvas
-  (width, height) <- G.drawingAreaGetSize canvas
+  win <- G.widgetGetDrawWindow canvas
+  (width, height) <- G.widgetGetSize canvas
   G.renderWithDrawable win $
       example width height
   return True
@@ -179,8 +200,8 @@ example_sasho = do
 
 -- Set up stuff
 prologue wWidth wHeight = do
-  let width   = 30
-      height  = 30
+  let width   = cCANVAS_SIDE
+      height  = cCANVAS_SIDE
       xmax    = width / 2
       xmin    = - xmax
       ymax    = height / 2
@@ -198,9 +219,7 @@ prologue wWidth wHeight = do
   C.scale scaleX scaleY
   -- center origin
   C.translate (width / 2) (height / 2)
-  -- positive y-axis upwards
-  let flipY = M.Matrix 1 0 0 (-1) 0 0
-  C.transform flipY
+  C.transform cCOORD_TRANSFORM
 
   grid xmin xmax ymin ymax
 
