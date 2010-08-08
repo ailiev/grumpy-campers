@@ -1,5 +1,5 @@
 --
--- Based on Gtk2Hs/demo/cairo/Drawing2.hs 
+-- Based on Gtk2Hs/demo/cairo/Drawing2.hs
 -- Author: Johan Bockgård <bojohan@dd.chalmers.se>
 --
 -- This code is in the public domain.
@@ -11,7 +11,11 @@ import qualified Graphics.UI.Gtk.Glade as Glade
 import qualified Graphics.Rendering.Cairo as C
 import qualified Graphics.Rendering.Cairo.Matrix as M
 
+import qualified Graphics.UI.Gtk.Abstract.Widget as Widget
+
 import Paths_cairo_appbase as My
+import Control.Monad.Trans (liftIO)
+import System.IO (stdout, hFlush)
 
 windowWidth, windowHeight :: Int
 windowWidth   = 500
@@ -42,17 +46,17 @@ main = do
   -- get a handle on widgets from the glade file
   window <- get G.castToWindow "window1"
 
-  -- set up File->New
+  -- set up File-> New
   new1 <- get G.castToMenuItem "new1"
   G.onActivateLeaf new1 $ myNew
 
-  -- set up the File->Open dialog
+  -- set up the File-> Open dialog
   open1 <- get G.castToMenuItem "open1"
   openDialog <- get G.castToFileChooserDialog "opendialog"
   G.onActivateLeaf open1 $ G.widgetShow openDialog
   G.onResponse openDialog $ myFileOpen openDialog
 
-  -- set up the File->Save_As dialog
+  -- set up the File-> Save_As dialog
   save1 <- get G.castToMenuItem "save1"
   save_as1 <- get G.castToMenuItem "save_as1"
   saveDialog <- get G.castToFileChooserDialog "savedialog"
@@ -70,7 +74,7 @@ main = do
   delete1 <- get G.castToMenuItem "delete1"
   G.onActivateLeaf delete1 $ myDelete
 
-  -- set up the Help->About dialog
+  -- set up the Help-> About dialog
   about1 <- get G.castToMenuItem "about1"
   aboutdialog1 <- get G.castToAboutDialog "aboutdialog1"
   G.onActivateLeaf about1 $ G.widgetShow aboutdialog1
@@ -80,7 +84,7 @@ main = do
   --   G.windowSetResizable window False
   G.widgetSetSizeRequest window windowWidth windowHeight
 
-  -- quit on File->Quit menu selection
+  -- quit on File-> Quit menu selection
   quit1 <- get G.castToMenuItem "quit1"
   G.onActivateLeaf quit1 $ G.widgetDestroy window
   G.onDestroy window G.mainQuit
@@ -88,8 +92,16 @@ main = do
   -- set up the canvas
   canvas <- get G.castToDrawingArea "drawingarea1"
   G.onExpose canvas $ const (updateCanvas canvas)
+  G.widgetAddEvents canvas [Widget.ButtonPressMask]
+  canvas `G.on` G.buttonPressEvent $ G.tryEvent $
+    do (x,y) <- G.eventCoordinates
+       button <- G.eventButton
+       liftIO $ putStrLn $ show button ++ " button pressed at " ++ show x ++ "," ++ show y
+       liftIO $ hFlush stdout
   G.widgetShowAll window
   G.mainGUI
+
+
 
 myNew :: IO ()
 myNew = putStrLn "New"
@@ -160,12 +172,15 @@ fillStroke = do
 
 example width height = do
   prologue width height
-  example1
+  example_sasho
+
+example_sasho = do
+  drawCircle 0 0 1
 
 -- Set up stuff
 prologue wWidth wHeight = do
-  let width   = 10
-      height  = 10
+  let width   = 30
+      height  = 30
       xmax    = width / 2
       xmin    = - xmax
       ymax    = height / 2
