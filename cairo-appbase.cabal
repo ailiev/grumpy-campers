@@ -6,11 +6,11 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Conrad Parker, Johan Bockgård
 Maintainer:          conrad@metadecks.org
-Build-Depends:       base, glib, gtk, glade, cairo, mtl
+Build-Depends:       base, haskell98, mtl, glib, gtk, glade, cairo
 Build-Type:          Simple
 Data-Files:          data/main.glade
 
 Executable:          cairo-appbase
 Main-Is:             cairo-appbase.hs
 Hs-Source-Dirs:      src
-ghc-options:         -Wall -fglasgow-exts -O2 -funbox-strict-fields
+ghc-options:         -fglasgow-exts -O2 -funbox-strict-fields
