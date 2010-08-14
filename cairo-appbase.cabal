@@ -6,7 +6,7 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Conrad Parker, Johan Bockgård
 Maintainer:          conrad@metadecks.org
-Build-Depends:       base, haskell98, mtl, glib, gtk, glade, cairo
+Build-Depends:       base, haskell98, mtl, glib, gtk, glade, cairo, list-extras
 Build-Type:          Simple
 Data-Files:          data/main.glade
 
