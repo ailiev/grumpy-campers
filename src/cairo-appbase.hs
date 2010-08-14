@@ -30,8 +30,8 @@ cCANVAS_SIDE = 30
 
 
 windowWidth, windowHeight :: Int
-windowWidth   = 500
-windowHeight  = 500
+windowWidth   = 900
+windowHeight  = 900
 
 -- Write image to file
 writePng :: IO ()
@@ -193,6 +193,11 @@ keepState render = do
   render
   C.restore
 
+drawText :: Point -> String -> C.Render()
+drawText (x,y) text = do
+    C.moveTo (real x) (real y)
+    C.showText text
+
 drawCircle :: Int -> Int -> Double -> C.Render()
 drawCircle x y r = do
   C.arc (fromIntegral x) (fromIntegral y) r 0 (2 * pi)
@@ -221,7 +226,9 @@ example width height points = do
 
 example_sasho points = do
   drawCircle 0 0 1
-  mapM_ (\(x,y) -> drawCircle x y 0.25) points
+  C.setFontSize 0.5
+  let indexedPts = zip [1..] points
+  mapM_ (\( i, (x,y) ) -> drawText (x,y) (show i)) indexedPts
 
 transformMatrix wWidth wHeight =
     let width   = real cCANVAS_SIDE
