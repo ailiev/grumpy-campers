@@ -33,6 +33,34 @@ windowWidth, windowHeight :: Int
 windowWidth   = 900
 windowHeight  = 900
 
+
+-------------------------------------
+-- the campers layout algorithm
+
+type Point = (Int, Int)
+
+-- slight problem: generates the list in reverse.
+campingLocations boundingRect start =
+    iterate (\locs -> nextPoint boundingRect locs : locs) [start]
+
+nextPoint :: (Int, Int) -> [Point] -> Point
+nextPoint boundingRect curPoints =
+    let candidatePoints = allPoints boundingRect
+    in Argmax.argmax (\pt -> sqrtSumSqrs $ map (dist pt) $ curPoints)
+                        (candidatePoints \\ curPoints)
+
+-- how do we combine distances, in order to compute a minimum
+sqrtSumSqrs = sqrt . sum . map (^ 2)
+
+-- | all the points within a bounding rect
+allPoints (maxX, maxY) = [(x,y) | x <- [0..maxX], y <- [0..maxY]]
+
+dist :: Point -> Point -> Double
+dist (x1, y1) (x2, y2) = sqrt ( (real(x2-x1)^2) + (real(y2-y1)^2) )
+
+
+-----------------------------------
+
 -- Display image in window
 main = do
   G.initGUI
@@ -64,24 +92,6 @@ translateCoords canvas winX winY =
                 (M.invert $ transformMatrix winWidth winHeight) (winX, winY)
        return $ (round x, round y)
 
-type Point = (Int, Int)
-
-campingLocations boundingRect start =
-    iterate (\locs -> nextPoint boundingRect locs : locs) [start]
-
-nextPoint :: (Int, Int) -> [Point] -> Point
-nextPoint boundingRect curPoints =
-    let candidatePoints = allPoints boundingRect
-    in Argmax.argmax (\pt -> sqrtSumSqrs $ map (dist pt) $ curPoints)
-                        (candidatePoints \\ curPoints)
-
--- how do we combine distances, in order to compute a minimum
-sqrtSumSqrs = sqrt . sum . map (^ 2)
-
-allPoints (maxX, maxY) = [(x,y) | x <- [0..maxX], y <- [0..maxY]]
-
-dist :: Point -> Point -> Double
-dist (x1, y1) (x2, y2) = sqrt ( (fromIntegral(x2-x1)^2) + (fromIntegral(y2-y1)^2) )
 
 myNew :: IO ()
 myNew = putStrLn "New"
