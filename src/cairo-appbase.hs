@@ -17,9 +17,6 @@ import Paths_cairo_appbase as My
 import Control.Monad.Trans (liftIO)
 import IO (stdout, hFlush)
 
--- positive y-axis upwards
-cCOORD_TRANSFORM = M.Matrix 1 0 0 (-1) 0 0
-
 cCANVAS_SIDE = 30
 
 
@@ -115,11 +112,8 @@ main = do
 translateCoords :: G.DrawingArea -> Double -> Double -> IO (Int,Int)
 translateCoords canvas winX winY =
     do (winWidth, winHeight) <- G.widgetGetSize canvas
-       let  x_scaled = winX / (fromIntegral winWidth / cCANVAS_SIDE)
-            y_scaled = winY / (fromIntegral winHeight / cCANVAS_SIDE)
-            x_translated = x_scaled - (cCANVAS_SIDE/2)
-            y_translated = y_scaled - (cCANVAS_SIDE/2)
-            (x,y) = M.transformPoint cCOORD_TRANSFORM (x_translated, y_translated)
+       let (x,y) = M.transformPoint
+                (M.invert $ transformMatrix winWidth winHeight) (winX, winY)
        return $ (round x, round y)
 
 
@@ -198,7 +192,18 @@ example width height = do
 example_sasho = do
   drawCircle 0 0 1
 
+transformMatrix wWidth wHeight =
+    let width   = cCANVAS_SIDE
+        height  = cCANVAS_SIDE
+        scaleX  = realToFrac wWidth  / width
+        scaleY  = realToFrac wHeight / height
+        -- Matrix to apply to user space coords to get window coords
+    in M.Matrix
+            scaleX 0 0 (-scaleY)    -- scale and flip Y-axis to increase upwards
+            (fromIntegral wWidth / 2) ((fromIntegral wHeight / 2))  -- shift to put origin in middle
+
 -- Set up stuff
+prologue :: Int -> Int -> C.Render ()
 prologue wWidth wHeight = do
   let width   = cCANVAS_SIDE
       height  = cCANVAS_SIDE
@@ -208,6 +213,8 @@ prologue wWidth wHeight = do
       ymin    = - ymax
       scaleX  = realToFrac wWidth  / width
       scaleY  = realToFrac wHeight / height
+      -- Matrix to apply to user space coords to get window coords
+      matrix = transformMatrix wWidth wHeight
 
   -- style and color
   C.setLineCap C.LineCapRound
@@ -216,10 +223,10 @@ prologue wWidth wHeight = do
   C.setSourceRGBA 0.5 0.7 0.5 0.5
 
   -- Set up user coordinates
-  C.scale scaleX scaleY
+  -- C.scale scaleX scaleY
   -- center origin
-  C.translate (width / 2) (height / 2)
-  C.transform cCOORD_TRANSFORM
+  -- C.translate (width / 2) (height / 2)
+  C.transform matrix
 
   grid xmin xmax ymin ymax
 
