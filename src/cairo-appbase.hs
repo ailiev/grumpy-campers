@@ -1,8 +1,13 @@
+-- Playing with layout of campers who do not like each other, and want to be
+-- as far from each other as possible.
+-- by Alexander Iliev
 --
+-- Based on Cairo demo app by Conrad Parker
+-- which is:
 -- Based on Gtk2Hs/demo/cairo/Drawing2.hs
 -- Author: Johan Bockgård <bojohan@dd.chalmers.se>
 --
--- This code is in the public domain.
+-- Licensed under BSD3
 --
 
 import qualified System.Glib.Types as GTypes
@@ -16,6 +21,9 @@ import qualified Graphics.UI.Gtk.Abstract.Widget as Widget
 import Paths_cairo_appbase as My
 import Control.Monad.Trans (liftIO)
 import IO (stdout, hFlush)
+import List ( (\\) )
+
+import qualified Data.List.Extras.Argmax            as Argmax
 
 cCANVAS_SIDE = 30
 
@@ -28,7 +36,7 @@ windowHeight  = 500
 writePng :: IO ()
 writePng =
   C.withImageSurface C.FormatARGB32 width height $ \ result -> do
-      C.renderWith result $ example width height
+      C.renderWith result $ example width height []
       C.surfaceWriteToPNG result "Draw.png"
   where width  = windowWidth
         height = windowHeight
@@ -94,7 +102,7 @@ main = do
 
   -- set up the canvas
   canvas <- get G.castToDrawingArea "drawingarea1"
-  G.onExpose canvas $ const (updateCanvas canvas)
+
   -- seems to be enabled by default
   -- G.widgetAddEvents canvas [Widget.ButtonPressMask]
   canvas `G.on` G.buttonPressEvent $ G.tryEvent $
@@ -107,8 +115,11 @@ main = do
        liftIO $ hFlush stdout
 
   G.widgetShowAll window
+  let points = (!! 200) $ campingLocations (cCANVAS_SIDE,cCANVAS_SIDE) (12,7)
+  G.onExpose canvas $ const (updateCanvas canvas points)
   G.mainGUI
 
+-- | Translate canvas coords from window domain to user domain.
 translateCoords :: G.DrawingArea -> Double -> Double -> IO (Int,Int)
 translateCoords canvas winX winY =
     do (winWidth, winHeight) <- G.widgetGetSize canvas
@@ -116,7 +127,24 @@ translateCoords canvas winX winY =
                 (M.invert $ transformMatrix winWidth winHeight) (winX, winY)
        return $ (round x, round y)
 
+type Point = (Int, Int)
 
+campingLocations boundingRect start =
+    iterate (\locs -> nextPoint boundingRect locs : locs) [start]
+
+nextPoint :: (Int, Int) -> [Point] -> Point
+nextPoint boundingRect curPoints =
+    let candidatePoints = allPoints boundingRect
+    in Argmax.argmax (\pt -> sqrtSumSqrs $ map (dist pt) $ curPoints)
+                        (candidatePoints \\ curPoints)
+
+-- how do we combine distances, in order to compute a minimum
+sqrtSumSqrs = sqrt . sum . map (^ 2)
+
+allPoints (maxX, maxY) = [(x,y) | x <- [0..maxX], y <- [0..maxY]]
+
+dist :: Point -> Point -> Double
+dist (x1, y1) (x2, y2) = sqrt ( (fromIntegral(x2-x1)^2) + (fromIntegral(y2-y1)^2) )
 
 myNew :: IO ()
 myNew = putStrLn "New"
@@ -146,12 +174,12 @@ myPaste = putStrLn "Paste"
 myDelete :: IO ()
 myDelete = putStrLn "Delete"
 
-updateCanvas :: G.DrawingArea -> IO Bool
-updateCanvas canvas = do
+updateCanvas :: G.DrawingArea -> [Point] -> IO Bool
+updateCanvas canvas points = do
   win <- G.widgetGetDrawWindow canvas
   (width, height) <- G.widgetGetSize canvas
   G.renderWithDrawable win $
-      example width height
+      example width height points
   return True
 
 ----------------------------------------------------------------
@@ -164,8 +192,9 @@ keepState render = do
   render
   C.restore
 
+drawCircle :: Int -> Int -> Double -> C.Render()
 drawCircle x y r = do
-  C.arc x y r 0 (2 * pi)
+  C.arc (fromIntegral x) (fromIntegral y) r 0 (2 * pi)
   fillStroke
 
 drawRectangle x y w h = do
@@ -185,12 +214,13 @@ fillStroke = do
 
 -- Example
 
-example width height = do
+example width height points = do
   prologue width height
-  example_sasho
+  example_sasho points
 
-example_sasho = do
+example_sasho points = do
   drawCircle 0 0 1
+  mapM_ (\(x,y) -> drawCircle x y 0.25) points
 
 transformMatrix wWidth wHeight =
     let width   = cCANVAS_SIDE
@@ -200,7 +230,8 @@ transformMatrix wWidth wHeight =
         -- Matrix to apply to user space coords to get window coords
     in M.Matrix
             scaleX 0 0 (-scaleY)    -- scale and flip Y-axis to increase upwards
-            (fromIntegral wWidth / 2) ((fromIntegral wHeight / 2))  -- shift to put origin in middle
+--            (fromIntegral wWidth / 2) ((fromIntegral wHeight / 2))  -- shift to put origin in middle
+            0 (fromIntegral wHeight)    -- shift horiz axis to bottom of window.
 
 -- Set up stuff
 prologue :: Int -> Int -> C.Render ()
