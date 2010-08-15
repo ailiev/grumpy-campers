@@ -1,16 +1,16 @@
 Cabal-Version:       >= 1.6
-Name:                cairo-appbase
+Name:                grumpy-campers
 Version:             0.2
-Description:         Base code for an application using Cairo graphics
+Description:         Small GTK/Haskell app to help grumpy campers locate where to pitch their tents.
 License:             BSD3
 License-file:        LICENSE
 Author:              Alexander Iliev, Conrad Parker, Johan Bockgård
-Maintainer:          conrad@metadecks.org
+Maintainer:          alex.iliev@gmail.com
 Build-Depends:       base, haskell98, mtl, glib, gtk, glade, cairo, list-extras
 Build-Type:          Simple
 Data-Files:          data/main.glade
 
-Executable:          cairo-appbase
-Main-Is:             cairo-appbase.hs
+Executable:          grumpy-campers.hs
+Main-Is:             grumpy-campers.hs
 Hs-Source-Dirs:      src
 ghc-options:         -fglasgow-exts -O2 -funbox-strict-fields
