@@ -30,8 +30,8 @@ cCANVAS_SIDE = 30
 
 
 windowWidth, windowHeight :: Int
-windowWidth   = 900
-windowHeight  = 900
+windowWidth   = 800
+windowHeight  = 800
 
 
 -------------------------------------
@@ -41,16 +41,18 @@ type Point = (Int, Int)
 
 -- slight problem: generates the list in reverse.
 campingLocations boundingRect start =
-    iterate (\locs -> nextPoint boundingRect locs : locs) [start]
+    iterate (\locs -> nextPoint boundingRect sum locs : locs) [start]
 
-nextPoint :: (Int, Int) -> [Point] -> Point
-nextPoint boundingRect curPoints =
-    let candidatePoints = allPoints boundingRect
-    in Argmax.argmax (\pt -> sqrtSumSqrs $ map (dist pt) $ curPoints)
-                        (candidatePoints \\ curPoints)
+nextPoint :: (Int, Int) -> ([Double] -> Double) -> [Point] -> Point
+nextPoint boundingRect distCombineF curPoints =
+    let candidatePoints = (allPoints boundingRect \\ curPoints)
+    in Argmax.argmax (\pt -> distCombineF $ map (dist pt) $ curPoints)
+                        candidatePoints
 
--- how do we combine distances, in order to compute a minimum
+-- square root of the sum of the squares.
+sqrtSumSqrs :: [Double] -> Double
 sqrtSumSqrs = sqrt . sum . map (^ 2)
+
 
 -- | all the points within a bounding rect
 allPoints (maxX, maxY) = [(x,y) | x <- [0..maxX], y <- [0..maxY]]
@@ -127,12 +129,15 @@ keepState render = do
 
 drawText :: Point -> String -> C.Render()
 drawText (x,y) text = do
+    transform <- C.getMatrix
+    C.setMatrix $ M.scale 1 (-1) transform + M.Matrix 0 0 0 0 0 1600
     C.moveTo (real x) (real y)
     C.showText text
+    C.setMatrix transform
 
 drawCircle :: Int -> Int -> Double -> C.Render()
 drawCircle x y r = do
-  C.arc (fromIntegral x) (fromIntegral y) r 0 (2 * pi)
+  C.arc (real x) (real y) r 0 (2 * pi)
   fillStroke
 
 drawRectangle x y w h = do
@@ -160,27 +165,31 @@ example_sasho points = do
   drawCircle 0 0 1
   C.setFontSize 0.5
   let indexedPts = zip [1..] points
-  mapM_ (\( i, (x,y) ) -> drawText (x,y) (show i)) indexedPts
+  foreach indexedPts
+    --(\( i, (x,y) ) -> drawText (x,y) (show i))
+     (\( i, (x,y) ) -> drawCircle x y 0.25)
 
+-- | Matrix to apply to user space coords to get window coords
 transformMatrix wWidth wHeight =
     let width   = real cCANVAS_SIDE
         height  = real cCANVAS_SIDE
         scaleX  = realToFrac wWidth  / width
         scaleY  = realToFrac wHeight / height
-        -- Matrix to apply to user space coords to get window coords
     in M.Matrix
             scaleX 0 0 (-scaleY)    -- scale and flip Y-axis to increase upwards
 --            (fromIntegral wWidth / 2) ((fromIntegral wHeight / 2))  -- shift to put origin in middle
             0 (fromIntegral wHeight)    -- shift horiz axis to bottom of window.
+
+_t = transformMatrix 900 900
 
 -- Set up stuff
 prologue :: Int -> Int -> C.Render ()
 prologue wWidth wHeight = do
   let width   = real cCANVAS_SIDE
       height  = real cCANVAS_SIDE
-      xmax    = width / 2
+      xmax    = width
       xmin    = - xmax
-      ymax    = height / 2
+      ymax    = height
       ymin    = - ymax
       scaleX  = realToFrac wWidth  / width
       scaleY  = realToFrac wHeight / height
