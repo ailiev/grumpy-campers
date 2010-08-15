@@ -30,8 +30,8 @@ cCANVAS_SIDE = 30
 
 
 windowWidth, windowHeight :: Int
-windowWidth   = 800
-windowHeight  = 800
+windowWidth   = 750
+windowHeight  = 750
 
 
 -------------------------------------
@@ -150,7 +150,6 @@ example width height points = do
   example_sasho points
 
 example_sasho points = do
-  drawCircle 1 1 (0,0)
   C.setFontSize 0.5
   let   numPoints = length points
         indexedPts = zip [1..] points
@@ -282,11 +281,12 @@ setupGUIBoilerplate = do
 
 
 -- Write image to file
-writePng :: IO ()
-writePng =
+writePng :: FilePath -> IO ()
+writePng outFile =
   C.withImageSurface C.FormatARGB32 width height $ \ result -> do
-      C.renderWith result $ example width height []
-      C.surfaceWriteToPNG result "Draw.png"
+      let points = (!! 50) $ campingLocations (cCANVAS_SIDE,cCANVAS_SIDE) (12,7)
+      C.renderWith result $ example width height points
+      C.surfaceWriteToPNG result outFile
   where width  = windowWidth
         height = windowHeight
 
@@ -297,14 +297,27 @@ myFileOpen :: G.FileChooserDialog -> G.ResponseId -> IO ()
 myFileOpen fcdialog response = do
   case response of
     G.ResponseOk -> do Just filename <- G.fileChooserGetFilename fcdialog
-                       putStrLn filename
+                       putStrLn $ "Opening " ++ filename
+    G.ResponseCancel -> putStrLn "Cancelled!"
+    G.ResponseDeleteEvent -> putStrLn "FileChooserDialog Deleted!"
+    G.ResponseClose -> putStrLn "Closed!"
+  G.widgetHide fcdialog
+
+fileAction :: (FilePath -> IO()) -> G.FileChooserDialog -> G.ResponseId -> IO ()
+fileAction fileProc fcdialog response = do
+  case response of
+    G.ResponseOk -> do  Just filename <- G.fileChooserGetFilename fcdialog
+                        fileProc filename
     G.ResponseCancel -> putStrLn "Cancelled!"
     G.ResponseDeleteEvent -> putStrLn "FileChooserDialog Deleted!"
     G.ResponseClose -> putStrLn "Closed!"
   G.widgetHide fcdialog
 
 myFileSave :: G.FileChooserDialog -> G.ResponseId -> IO ()
-myFileSave = myFileOpen
+myFileSave = fileAction $ \filename -> do
+    putStrLn $ "Saving to file " ++ filename
+    writePng filename
+
 
 myCut :: IO ()
 myCut = putStrLn "Cut"
