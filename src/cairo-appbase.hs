@@ -80,7 +80,7 @@ main = do
        liftIO $ hFlush stdout
 
   G.widgetShowAll window
-  let points = (!! 200) $ campingLocations (cCANVAS_SIDE,cCANVAS_SIDE) (12,7)
+  let points = (!! 50) $ campingLocations (cCANVAS_SIDE,cCANVAS_SIDE) (12,7)
   G.onExpose canvas $ const (updateCanvas canvas points)
   G.mainGUI
 
@@ -94,19 +94,6 @@ translateCoords canvas winX winY =
                 (M.invert $ transformMatrix winWidth winHeight) (winX, winY)
        return $ (round x, round y)
 
-
-myNew :: IO ()
-myNew = putStrLn "New"
-
-myFileOpen :: G.FileChooserDialog -> G.ResponseId -> IO ()
-myFileOpen fcdialog response = do
-  case response of
-    G.ResponseOk -> do Just filename <- G.fileChooserGetFilename fcdialog
-                       putStrLn filename
-    G.ResponseCancel -> putStrLn "Cancelled!"
-    G.ResponseDeleteEvent -> putStrLn "FileChooserDialog Deleted!"
-    G.ResponseClose -> putStrLn "Closed!"
-  G.widgetHide fcdialog
 
 
 updateCanvas :: G.DrawingArea -> [Point] -> IO Bool
@@ -135,8 +122,9 @@ drawText (x,y) text = do
     C.showText text
     C.setMatrix transform
 
-drawCircle :: Int -> Int -> Double -> C.Render()
-drawCircle x y r = do
+drawCircle :: Double -> Double -> Point -> C.Render()
+drawCircle r darkness (x,y) = do
+  C.setSourceRGBA (darkness) 0 ((5/7)*darkness) 0.5
   C.arc (real x) (real y) r 0 (2 * pi)
   fillStroke
 
@@ -162,12 +150,13 @@ example width height points = do
   example_sasho points
 
 example_sasho points = do
-  drawCircle 0 0 1
+  drawCircle 1 1 (0,0)
   C.setFontSize 0.5
-  let indexedPts = zip [1..] points
+  let   numPoints = length points
+        indexedPts = zip [1..] points
   foreach indexedPts
     --(\( i, (x,y) ) -> drawText (x,y) (show i))
-     (\( i, (x,y) ) -> drawCircle x y 0.25)
+     (\( i, pt ) -> drawCircle 0.25 (real i/real numPoints) pt)
 
 -- | Matrix to apply to user space coords to get window coords
 transformMatrix wWidth wHeight =
@@ -180,7 +169,6 @@ transformMatrix wWidth wHeight =
 --            (fromIntegral wWidth / 2) ((fromIntegral wHeight / 2))  -- shift to put origin in middle
             0 (fromIntegral wHeight)    -- shift horiz axis to bottom of window.
 
-_t = transformMatrix 900 900
 
 -- Set up stuff
 prologue :: Int -> Int -> C.Render ()
@@ -200,7 +188,7 @@ prologue wWidth wHeight = do
   C.setLineCap C.LineCapRound
   C.setLineJoin C.LineJoinRound
   C.setLineWidth $ 1 / max scaleX scaleY
-  C.setSourceRGBA 0.5 0.7 0.5 0.5
+  C.setSourceRGBA 0.7 0.2 0.5 0.5
 
   -- Set up user coordinates
   -- C.scale scaleX scaleY
@@ -301,6 +289,19 @@ writePng =
       C.surfaceWriteToPNG result "Draw.png"
   where width  = windowWidth
         height = windowHeight
+
+myNew :: IO ()
+myNew = putStrLn "New"
+
+myFileOpen :: G.FileChooserDialog -> G.ResponseId -> IO ()
+myFileOpen fcdialog response = do
+  case response of
+    G.ResponseOk -> do Just filename <- G.fileChooserGetFilename fcdialog
+                       putStrLn filename
+    G.ResponseCancel -> putStrLn "Cancelled!"
+    G.ResponseDeleteEvent -> putStrLn "FileChooserDialog Deleted!"
+    G.ResponseClose -> putStrLn "Closed!"
+  G.widgetHide fcdialog
 
 myFileSave :: G.FileChooserDialog -> G.ResponseId -> IO ()
 myFileSave = myFileOpen
