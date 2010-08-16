@@ -47,7 +47,7 @@ campingLocations boundingRect start =
 
 nextPoint :: (Int, Int) -> ([Double] -> Double) -> [Point] -> Point
 nextPoint boundingRect distCombineF curPoints =
-    let candidatePoints = (allPoints boundingRect \\ curPoints)
+    let candidatePoints = (allPoints (real cCANVAS_SIDE/2) boundingRect \\ curPoints)
     in Argmax.argmax (\pt -> distCombineF $ map (dist pt) $ curPoints)
                         candidatePoints
 
@@ -57,7 +57,9 @@ sqrtSumSqrs = sqrt . sum . map (^ 2)
 
 
 -- | all the points within a bounding rect
-allPoints (maxX, maxY) = [(x,y) | x <- [0..maxX], y <- [0..maxY]]
+allPoints :: Double -> Point -> [Point]
+allPoints radius (maxX, maxY) = [(x,y) | x <- [0..maxX], y <- [0..maxY],
+                                    dist (maxX `div` 2, maxY `div` 2) (x,y) < radius]
 
 dist :: Point -> Point -> Double
 dist (x1, y1) (x2, y2) = sqrt ( (real(x2-x1)^2) + (real(y2-y1)^2) )
@@ -82,7 +84,7 @@ main = do
        liftIO $ hFlush stdout
 
   G.widgetShowAll window
-  let points = (!! 50) $ campingLocations (cCANVAS_SIDE,cCANVAS_SIDE) (12,7)
+  let points = (!! 150) $ campingLocations (cCANVAS_SIDE,cCANVAS_SIDE) (12,7)
   G.onExpose canvas $ const (updateCanvas canvas points)
   G.mainGUI
 
